@@ -107,14 +107,22 @@
 		this.mouser = new Mouser(canvas);
 		this.transition = new Transition(gameSize, 21);
 		this.colorSwipe = new ColorSwipe(gameSize, 21);
+		this.endGameDisplay = new EndGameDisplay(gameSize, center);
 
 		// color corners
 		this.colorCorners = createCorners(gameSize);
 
 		// Graph vertices and edges
-		this.allGraphs = [{V : [0, 1, 2, 3], E : [[0,1], [0,2], [0,3], [1,2], [1,3], [2,3]], Nbrs : [[1, 2, 3], [0, 2, 3], [0, 1, 3], [0, 1, 2]]},
-						 {V : [0, 1, 2], E : [[0,1], [0,2], [1,2]], Nbrs : [[1, 2], [0, 2], [0, 1]]},
-						 {V : [0, 1, 2, 3], E : [[0,1], [0,2], [1,2], [1,3]], Nbrs : [[1, 2], [0, 2], [0, 1], [1]]}]
+		this.allGraphs = [{V : [0, 1, 2, 3, 4, 5], E : [[0,1], [0,5], [1,2], [2,3], [3,4], [4,5]],
+						 						   Nbrs : [[1, 5], [0, 2], [1, 3], [2, 4], [3, 5], [0, 4]]},
+						  {V : [0, 1, 2, 3], E : [[0,1], [0,2], [0,3], [1,2], [1,3], [2,3]],
+											 Nbrs : [[1, 2, 3], [0, 2, 3], [0, 1, 3], [0, 1, 2]]},
+						  {V : [0, 1, 2, 3, 4, 5], E : [[0,3], [0,4], [0,5], [1,3], [1,4], [1,5], [2, 3], [2, 4], [2, 5]],
+						 						   Nbrs : [[3, 4, 5], [3, 4, 5], [3, 4, 5], [0, 1, 2], [0, 1, 2], [0, 1, 2]]},
+						  {V : [0, 1, 2, 3, 4], E : [[0,1], [0,2], [0,3], [0,4], [1,2], [1,3], [1,4], [2,3], [2,4]], 
+						 				        Nbrs : [[1, 2, 3, 4], [0, 2, 3, 4], [0, 1, 3, 4], [0, 1, 2], [0, 1, 2]]},
+						  {V : [0, 1, 2, 3, 4, 5], E : [[0,1], [0,2], [0,3], [0,4], [0,5], [1,2], [3,4]],
+						 						   Nbrs : [[1, 2, 3, 4, 5], [0, 2], [0, 1], [0, 4], [0, 3], [0]]}]
 		this.currentGraph = this.allGraphs.shift();
 
 		// vertices are initialized with a neighbor index list
@@ -166,7 +174,7 @@
 
 			// ------------------------ TRANSITION --------------------------- // 
 			// if the player has won, start the winner transition
-			if (this.gameWinner){
+			if (this.gameWinner) {
 				this.transition.isRunning = true;
 			} 
 
@@ -185,7 +193,11 @@
 
 				// if the colorswipe is covering the screen, reset puzzle and transition
 				if (this.colorSwipe.isCoveringScreen && !this.resetGame) {
-					this.reset(gameSize);
+					if (this.allGraphs.length > 0) {
+						this.reset(gameSize);
+					} else {
+						this.endGame(gameSize);
+					}
 					this.resetGame = true;
 				}
 				// once the colorswipe is finished running, reset it
@@ -194,22 +206,6 @@
 					this.resetGame = false;
 				}
 			}
-		},
-
-		reset : function(gameSize) {
-			// reset game objects
-			this.gameWinner = false;
-			this.currentGraph = this.allGraphs.shift();
-			this.vertices = createVertices({ x : gameSize.x / 2, y : gameSize.y / 2},
-											 this.currentGraph.V,
-											 this.currentGraph.Nbrs);
-			for (var i = 0; i < this.vertices.length; i++) {
-				this.vertices[i].assignNeighbors(this.vertices);
-			}
-			this.edges = createEdges(this.vertices, this.currentGraph.E);
-
-			// reset transition
-			this.transition = new Transition(gameSize, 20);
 		},
 
 		draw: function(screen, gameSize) {
@@ -240,13 +236,40 @@
 				this.vertices[i].draw(screen);
 			}
 
-			// ------------------------ TRANSITION --------------------------- // 
+			// ------------------------ TRANSITION / END GAME --------------------------- // 
 			if (this.transition.isRunning) {
 				this.transition.draw(screen, gameSize);
+			}
+			if (this.endGameDisplay.isRunning) {
+				this.endGameDisplay.draw(screen);
 			}
 			if (this.colorSwipe.isRunning) {
 				this.colorSwipe.draw(screen);
 			}
+		},
+
+		reset : function(gameSize) {
+			// reset game objects
+			this.gameWinner = false;
+			this.currentGraph = this.allGraphs.shift();
+			this.vertices = createVertices({ x : gameSize.x / 2, y : gameSize.y / 2},
+											 this.currentGraph.V,
+											 this.currentGraph.Nbrs);
+			for (var i = 0; i < this.vertices.length; i++) {
+				this.vertices[i].assignNeighbors(this.vertices);
+			}
+			this.edges = createEdges(this.vertices, this.currentGraph.E);
+
+			// reset transition
+			this.transition = new Transition(gameSize, 20);
+		},
+
+		endGame : function(gameSize) {
+			this.gameWinner = false;
+			this.endGameDisplay.isRunning = true;
+
+			// reset transition
+			this.transition = new Transition(gameSize, 20);
 		}
 	};
 
@@ -490,8 +513,8 @@
 			// update font size once the screen is covered with greyscale blocks
 			// ie. once a left moving block has x position < 0
 			if (this.blocks[1].x < 0){
-				this.fontSize += 4;
-				this.textPos.y += 4;
+				this.fontSize += 6;
+				this.textPos.y += 5;
 			}
 
 			// transition is finished running once fontsize has reached its max value
@@ -536,6 +559,38 @@
 		}
 
 	};
+
+	var EndGameDisplay = function(gameSize, center) {
+		this.isRunning = false;
+		this.gameSize = gameSize;
+		this.center = center;
+		this.diagonal = Math.sqrt(this.gameSize.x * this.gameSize.x + this.gameSize.y * this.gameSize.y) / 2;
+	}
+
+	EndGameDisplay.prototype = {
+		draw : function(screen) {
+			// draw background
+			var offSet = 24;
+			var colors = ["yellow", "red", "blue", "green"];
+			for (var r = Math.ceil((this.diagonal / offSet)); r > 0; r--) {
+				screen.fillStyle = colors[r % colors.length];
+				screen.beginPath();
+				screen.arc(this.center.x, this.center.y, r * offSet, 0, 2 * Math.PI);
+				screen.fill();
+			}
+
+			// draw text
+			screen.textAlign = "center"; 
+			screen.font = "80px Courier";
+
+			var maxTextPosThanks = { x : this.gameSize.x / 2, y : (this.gameSize.y / 2) - 25};
+			var maxTextPosPlaying = { x : this.gameSize.x / 2, y : (this.gameSize.y / 2) + 75};
+
+			screen.fillStyle = "black";
+			screen.fillText("THANKS FOR", maxTextPosThanks.x, maxTextPosThanks.y);
+			screen.fillText("PLAYING!", maxTextPosPlaying.x, maxTextPosPlaying.y);
+		}
+	}
 
 	// create an array of horizontal transition blocks
 	var createHorizontalBlocks = function(width, height, offSet, gameSize) {
@@ -582,6 +637,4 @@
 		new Game("canvas");
 	};
 })();
-
-
 
